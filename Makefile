@@ -9,7 +9,7 @@ build:
 	docker build -f Dockerfile -t $(CONTAINER_NAME):latest .
 
 start: build
-	docker run -p 8501:8501 --name $(CONTAINER_NAME) -dt $(CONTAINER_NAME):latest
+	docker run --rm -p 8501:8501 --name $(CONTAINER_NAME) -dt $(CONTAINER_NAME):latest
 
 stop:
 	docker stop $(CONTAINER_NAME)
