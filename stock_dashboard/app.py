@@ -1,14 +1,57 @@
 import streamlit as st
 import yfinance
 import datetime
+import pandas as pd
 
+from typing import Tuple
 import plotly.graph_objects as pgo
 
 
-def get_stock_info_and_history(ticker: str):
+def get_stock_info_and_history(ticker: str) -> Tuple[dict, pd.DataFrame]:
     """Get the daily historical adjusted price for a stock"""
     ticker_obj = yfinance.Ticker(ticker)
     return ticker_obj.info, ticker_obj.history(period="max")
+
+
+def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
+    """Get the start and end dates in the date range to display"""
+    # these show up in the side bar
+
+    # set default values
+    end_date = datetime.datetime.today().date()
+    start_date = end_date - datetime.timedelta(days=90)
+
+    default_start_date = start_date
+    default_end_date = end_date
+
+    # then present default options:
+    start_day_count = st.sidebar.radio(
+        "Date Range",
+        [7, 30, 90, 180, 365, 365 * 5, "Custom"],
+        format_func=lambda s: s
+        if isinstance(s, str)
+        else (f"{s}d" if s < 365 else f"{int(s/365)}y"),
+        index=2,
+    )
+
+    # if "custom" selected, then display a date range option
+    if start_day_count == "Custom":
+        start_date = st.sidebar.date_input(
+            label="start date",
+            min_value=datetime.date(1900, 1, 1),
+            max_value=datetime.datetime.today().date(),
+            value=default_end_date,
+        )
+        end_date = st.sidebar.date_input(
+            label="end date",
+            min_value=datetime.date(1900, 1, 1),
+            max_value=datetime.datetime.today().date(),
+            value=default_end_date,
+        )
+    else:
+        start_date = end_date - datetime.timedelta(days=start_day_count)
+
+    return start_date, end_date
 
 
 def run_main():
@@ -18,13 +61,8 @@ def run_main():
     # Widgets
     # these show up in the main bar
     ticker = st.text_input(label="Ticker")
-    # these show up in the side bar
-    oldest_date = st.sidebar.date_input(
-        label="Oldest Date",
-        min_value=datetime.date(1900, 1, 1),
-        max_value=datetime.datetime.today().date() - datetime.timedelta(days=1),
-        value=datetime.datetime.today().date() - datetime.timedelta(days=30),
-    )
+
+    start_date, end_date = sidebar_get_date_range()
 
     # make a plot of what we need to show
     if ticker:
@@ -33,7 +71,9 @@ def run_main():
         prices_all["rolling_a"] = prices_all["Close"].rolling(10).mean()
         prices_all["rolling_b"] = prices_all["Close"].rolling(20).mean()
 
-        prices = prices_all[prices_all.index >= str(oldest_date)]
+        prices = prices_all[
+            (prices_all.index >= str(start_date)) & (prices_all.index <= str(end_date))
+        ]
 
         # Write some information to the dashboard
         st.write(f"{stock_info['longName']}")
