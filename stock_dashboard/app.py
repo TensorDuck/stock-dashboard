@@ -2,13 +2,13 @@
 Creates a dashboard app for displaying a stock price with a rolling-average
 """
 
+import datetime
+from typing import Tuple
+
+import pandas as pd
 import streamlit as st
 import yfinance
-import datetime
-import pandas as pd
-
-from typing import Tuple
-import plotly.graph_objects as pgo
+from plotly import graph_objects as pgo
 
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300)
