@@ -7,16 +7,32 @@ from typing import Tuple
 import plotly.graph_objects as pgo
 
 
+@st.cache(show_spinner=True, max_entries=10, ttl=300)
 def get_stock_info_and_history(ticker: str) -> Tuple[dict, pd.DataFrame]:
-    """Get the daily historical adjusted price for a stock"""
+    """Get the daily historical adjusted price for a stock
+
+    Use caching to speed-up this process. By default, cache is maintained for up to the
+    10 most recent function calls. Also, all cached items will expire after 300 seconds.
+
+    Note, the returned objects should not mutate. If the cached objects are mutated
+    after this function call, there will be a CachedObjectMutationWarning.
+    """
     ticker_obj = yfinance.Ticker(ticker)
-    return ticker_obj.info, ticker_obj.history(period="max")
+    prices_all = ticker_obj.history(period="max")
+
+    # add additional columns to prices (i.e. rolling average)
+    prices_all["rolling_a"] = prices_all["Close"].rolling(10).mean()
+    prices_all["rolling_b"] = prices_all["Close"].rolling(20).mean()
+
+    return ticker_obj.info, prices_all
 
 
 def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
-    """Get the start and end dates in the date range to display"""
-    # these show up in the side bar
+    """Get the start and end dates in the date range to display
 
+    These widgest will be displayed in the sidebar
+
+    """
     # set default values
     end_date = datetime.datetime.today().date()
     start_date = end_date - datetime.timedelta(days=90)
@@ -34,8 +50,8 @@ def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
         index=2,
     )
 
-    # if "custom" selected, then display a date range option
     if start_day_count == "Custom":
+        # if "custom" selected, then display a date range option widgets
         start_date = st.sidebar.date_input(
             label="start date",
             min_value=datetime.date(1900, 1, 1),
@@ -49,6 +65,7 @@ def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
             value=default_end_date,
         )
     else:
+        # If a typical value is selected, calculated the date range
         start_date = end_date - datetime.timedelta(days=start_day_count)
 
     return start_date, end_date
@@ -68,21 +85,20 @@ def run_main():
     if ticker:
         # get stock prices for the desired date range
         stock_info, prices_all = get_stock_info_and_history(ticker)
-        prices_all["rolling_a"] = prices_all["Close"].rolling(10).mean()
-        prices_all["rolling_b"] = prices_all["Close"].rolling(20).mean()
 
         prices = prices_all[
             (prices_all.index >= str(start_date)) & (prices_all.index <= str(end_date))
         ]
 
-        # Write some information to the dashboard
+        # Display some basic stock information to the dashboard
         st.write(f"{stock_info['longName']}")
         dividend_yield = stock_info["trailingAnnualDividendYield"]
         if dividend_yield:
             st.write(f"Annual Dividend Yield: {dividend_yield*100:.2f}%")
         else:
             st.write("Annual Dividend Yield: None")
-        # make a figure
+
+        # Display a plot of the prices to the dashboard
         fig = pgo.Figure(layout={"hovermode": "x unified"})
         fig.add_trace(
             pgo.Scatter(x=prices.index, y=prices["Close"], mode="lines", name="price",)
