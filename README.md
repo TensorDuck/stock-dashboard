@@ -75,3 +75,10 @@ Refer to this demo to get started with initializing GCP on your system:
 https://cloud.google.com/sdk/docs/quickstart Refer to this demo to get started
 with deploying apps onto GCP:
 https://cloud.google.com/appengine/docs/standard/python3/building-app/creating-gcp-project
+
+### Use of plotly
+
+A good combination is to use streamlit to create the widgets, and then plotly to
+display the plots. The plotly package provides an interactive plot (e.g.
+zoom-in) to make it easier for the user to adjust the plot and display
+additional information on hover.

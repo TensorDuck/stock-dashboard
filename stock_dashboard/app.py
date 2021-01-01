@@ -1,3 +1,7 @@
+"""
+Creates a dashboard app for displaying a stock price with a rolling-average
+"""
+
 import streamlit as st
 import yfinance
 import datetime
@@ -30,8 +34,9 @@ def get_stock_info_and_history(ticker: str) -> Tuple[dict, pd.DataFrame]:
 def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
     """Get the start and end dates in the date range to display
 
-    These widgest will be displayed in the sidebar
-
+    These widgest will be displayed in the sidebar. The resultant start/end
+    dates selected with this widget is then returned, rather than the widget values
+    themselves.
     """
     # set default values
     end_date = datetime.datetime.today().date()
@@ -75,8 +80,7 @@ def run_main():
     """Main method for dashboard to assemble all the pieces of the dashboard"""
     st.title("Stock Analysis")
 
-    # Widgets
-    # these show up in the main bar
+    # Add a text widget for selecting the stock ticker to display
     ticker = st.text_input(label="Ticker")
 
     start_date, end_date = sidebar_get_date_range()
@@ -98,7 +102,7 @@ def run_main():
         else:
             st.write("Annual Dividend Yield: None")
 
-        # Display a plot of the prices to the dashboard
+        # create the figure object in plotly for plotting the prices to the dashboard
         fig = pgo.Figure(layout={"hovermode": "x unified"})
         fig.add_trace(
             pgo.Scatter(x=prices.index, y=prices["Close"], mode="lines", name="price",)
@@ -123,4 +127,5 @@ def run_main():
 
 
 if __name__ == "__main__":
+    # this is re-run every-time a widget's value changes in streamlit
     run_main()
