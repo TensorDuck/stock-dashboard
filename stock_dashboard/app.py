@@ -3,7 +3,7 @@ Creates a dashboard app for displaying a stock price with a rolling-average
 """
 
 import datetime
-from typing import Tuple
+from typing import List, Tuple
 
 import pandas as pd
 import streamlit as st
@@ -76,6 +76,27 @@ def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
     return start_date, end_date
 
 
+def purchase_history():
+    date_col, price_col, share_col, beat_col = st.beta_columns(4)
+    date_col.text("Purchase Date")
+    price_col.text("Price/Share")
+    share_col.text("Number of Shares")
+    beat_col.text("S&P 500 Beat")
+    purchase_date = date_col.date_input(
+        label="",
+        min_value=datetime.date(1900, 1, 1),
+        max_value=datetime.datetime.today().date(),
+        value=datetime.datetime.today().date(),
+    )
+    price_per_share = price_col.number_input(
+        label="", min_value=0.0, value=0.0, step=0.000001
+    )
+    n_shares = share_col.number_input(label="", min_value=0, value=0, step=1)
+
+    if purchase_date and price_per_share and n_shares:
+        beat_col.write("100")
+
+
 def run_main():
     """Main method for dashboard to assemble all the pieces of the dashboard"""
     st.title("Stock Analysis")
@@ -124,6 +145,8 @@ def run_main():
             )
         )
         st.write(fig)  # write it to streamlit
+
+        purchase_history()
 
 
 if __name__ == "__main__":
