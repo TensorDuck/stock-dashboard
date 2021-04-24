@@ -10,6 +10,9 @@ import streamlit as st
 import yfinance
 from plotly import graph_objects as pgo
 
+FXAIX_BASELINE = yfinance.Ticker("FXAIX")  # baseline S&P 500 index fund
+FXAIX_HISTORY = FXAIX_BASELINE.history(period="max")
+
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300)
 def get_stock_info_and_history(ticker: str) -> Tuple[dict, pd.DataFrame]:
@@ -123,6 +126,20 @@ def run_main():
         else:
             st.write("Annual Dividend Yield: None")
 
+        stock_growth = (
+            prices_all["Close"][str(end_date)] - prices_all["Close"][str(start_date)]
+        ) / prices_all["Close"][str(start_date)]
+        baseline_growth = (
+            FXAIX_HISTORY["Close"][str(end_date)]
+            - FXAIX_HISTORY["Close"][str(start_date)]
+        ) / FXAIX_HISTORY["Close"][str(start_date)]
+        sg_col, bl_col, beat_col = st.beta_columns(3)
+        sg_col.text("Stock Growth")
+        sg_col.write(f"{stock_growth*100:.2f}%")
+        bl_col.text("S&P 500 Growth")
+        bl_col.write(f"{baseline_growth*100:.2f}%")
+        beat_col.text("Beat")
+        beat_col.write(f"{(stock_growth - baseline_growth)*100:.2f}%")
         # create the figure object in plotly for plotting the prices to the dashboard
         fig = pgo.Figure(layout={"hovermode": "x unified"})
         fig.add_trace(
