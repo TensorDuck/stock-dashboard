@@ -10,12 +10,71 @@ import streamlit as st
 import yfinance
 from plotly import graph_objects as pgo
 
-FXAIX_BASELINE = yfinance.Ticker("FXAIX")  # baseline S&P 500 index fund
-FXAIX_HISTORY = FXAIX_BASELINE.history(period="max")
+
+class StockInfo:
+    def __init__(self, ticker: str):
+        """Store stock info and provide internal calculations for common metrics
+
+        By default, the price used is the adjusted price. This typically means:
+            * Splits are already accounte dfor
+            * Reduction in price from dividends is already accounted for
+
+        In effect, the adjusted closing price is analagous to the scenario of:  buying
+        the security at the closing price and then re-investing all dividends into the
+        same security on the day they are paid.
+
+        Args:
+            ticker: Name of stock ticker to get data for
+        """
+        self.ticker = ticker
+        self.ticker_obj = yfinance.Ticker(ticker)
+        self.prices = self.ticker_obj.history(period="max")
+
+    def get_annual_dividend_yield(self) -> float:
+        """Get annual dividend yield, i.e. 0.02 for 2% yield in past 12 months"""
+        return self.ticker_obj.info["trailingAnnualDividendYield"]
+
+    def rolling_average(self, period: int = 10) -> pd.Series:
+        """Calculate preceding 10-day rolling average
+
+        The rolling average is computed backwards in time, so for April 1st, it will
+        look at the preceding 10-days of trading and compute an average of the closing
+        price.
+
+        Args:
+            period: The number of days to include in the rolling average
+
+        Returns:
+            Rolling average of closing price for each day
+        """
+        return self.prices["Close"].rolling(period).mean()
+
+    def get_sub_prices_by_day(self, start_date: str, end_date: str) -> pd.DataFrame:
+        """Get a sub-sample between the start and end dates"""
+
+        return self.prices[
+            (self.prices.index >= start_date) & (self.prices.index <= end_date)
+        ]
+
+    def calculate_growth(self, start_date: str, end_date: str) -> float:
+        """Calculate the percentage the stock grew by between start and end date
+
+        This is the growth between the adjusted closing price.
+
+        """
+        sub_prices = self.get_sub_prices_by_day(start_date, end_date)
+        min_date = min(sub_prices.index)
+        max_date = max(sub_prices.index)
+        return (sub_prices["Close"][min_date] - sub_prices["Close"][max_date]) / (
+            sub_prices["Close"][min_date]
+        )
+
+
+FXAIX_BASELINE = StockInfo("FXAIX")  # baseline S&P 500 index fund
 
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300)
-def get_stock_info_and_history(ticker: str) -> Tuple[dict, pd.DataFrame]:
+def get_stock_info_and_history(ticker: str) -> StockInfo:
     """Get the daily historical adjusted price for a stock
 
     Use caching to speed-up this process. By default, cache is maintained for up to the
@@ -24,14 +83,14 @@ def get_stock_info_and_history(ticker: str) -> Tuple[dict, pd.DataFrame]:
     Note, the returned objects should not mutate. If the cached objects are mutated
     after this function call, there will be a CachedObjectMutationWarning.
     """
-    ticker_obj = yfinance.Ticker(ticker)
-    prices_all = ticker_obj.history(period="max")
+    return StockInfo(ticker)
+    prices_all = info_obj.prices
 
     # add additional columns to prices (i.e. rolling average)
-    prices_all["rolling_a"] = prices_all["Close"].rolling(10).mean()
-    prices_all["rolling_b"] = prices_all["Close"].rolling(20).mean()
+    prices_all["rolling_a"] = info_obj.rolling_average(10)
+    prices_all["rolling_b"] = info_obj.rolling_average(20)
 
-    return ticker_obj.info, prices_all
+    return info_obj.ticker_obj.info, prices_all
 
 
 def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
@@ -111,28 +170,21 @@ def run_main():
 
     # make a plot of what we need to show
     if ticker:
+        start, stop = str(start_date), str(end_date)
         # get stock prices for the desired date range
-        stock_info, prices_all = get_stock_info_and_history(ticker)
-
-        prices = prices_all[
-            (prices_all.index >= str(start_date)) & (prices_all.index <= str(end_date))
-        ]
+        stock_info = get_stock_info_and_history(ticker)
 
         # Display some basic stock information to the dashboard
-        st.write(f"{stock_info['longName']}")
-        dividend_yield = stock_info["trailingAnnualDividendYield"]
+        st.write(f"{stock_info.ticker_obj.info['longName']}")
+        dividend_yield = stock_info.get_annual_dividend_yield()
         if dividend_yield:
             st.write(f"Annual Dividend Yield: {dividend_yield*100:.2f}%")
         else:
             st.write("Annual Dividend Yield: None")
 
-        stock_growth = (
-            prices_all["Close"][str(end_date)] - prices_all["Close"][str(start_date)]
-        ) / prices_all["Close"][str(start_date)]
-        baseline_growth = (
-            FXAIX_HISTORY["Close"][str(end_date)]
-            - FXAIX_HISTORY["Close"][str(start_date)]
-        ) / FXAIX_HISTORY["Close"][str(start_date)]
+        # calculate the growth relative to the baseline
+        stock_growth = stock_info.calculate_growth(start, stop)
+        baseline_growth = FXAIX_BASELINE.calculate_growth(start, stop)
         sg_col, bl_col, beat_col = st.beta_columns(3)
         sg_col.text("Stock Growth")
         sg_col.write(f"{stock_growth*100:.2f}%")
@@ -140,7 +192,9 @@ def run_main():
         bl_col.write(f"{baseline_growth*100:.2f}%")
         beat_col.text("Beat")
         beat_col.write(f"{(stock_growth - baseline_growth)*100:.2f}%")
+
         # create the figure object in plotly for plotting the prices to the dashboard
+        prices = stock_info.get_sub_prices_by_day(start, stop)
         fig = pgo.Figure(layout={"hovermode": "x unified"})
         fig.add_trace(
             pgo.Scatter(x=prices.index, y=prices["Close"], mode="lines", name="price",)
@@ -148,7 +202,7 @@ def run_main():
         fig.add_trace(
             pgo.Scatter(
                 x=prices.index,
-                y=prices["rolling_a"],
+                y=stock_info.rolling_average(10)[prices.index],
                 mode="lines",
                 name="10-day Average",
             )
@@ -156,14 +210,12 @@ def run_main():
         fig.add_trace(
             pgo.Scatter(
                 x=prices.index,
-                y=prices["rolling_b"],
+                y=stock_info.rolling_average(20)[prices.index],
                 mode="lines",
                 name="20-day Average",
             )
         )
         st.write(fig)  # write it to streamlit
-
-        purchase_history()
 
 
 if __name__ == "__main__":
