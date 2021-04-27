@@ -103,7 +103,7 @@ class StockInfo:
 FXAIX_BASELINE = StockInfo("FXAIX")  # baseline S&P 500 index fund
 
 
-@st.cache(show_spinner=True, max_entries=10, ttl=300)
+@st.cache(show_spinner=True, max_entries=10, ttl=300, allow_output_mutation=True)
 def get_stock_info_and_history(ticker: str) -> StockInfo:
     """Get the daily historical adjusted price for a stock
 
