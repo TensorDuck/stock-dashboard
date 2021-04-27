@@ -10,8 +10,6 @@ from plotly import graph_objects as pgo
 
 from stock_dashboard.stock_info import StockInfo
 
-FXAIX_BASELINE = StockInfo("FXAIX")  # baseline S&P 500 index fund
-
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300, allow_output_mutation=True)
 def get_stock_info_and_history(ticker: str) -> StockInfo:
@@ -31,6 +29,13 @@ def get_stock_info_and_history(ticker: str) -> StockInfo:
     prices_all["rolling_b"] = info_obj.rolling_average(20)
 
     return info_obj.ticker_obj.info, prices_all
+
+
+def sidebar_set_baseline() -> StockInfo:
+    """Set a stock for baseline-comparisons, e.g. FXAIX for S&P500 comparison"""
+    selection_map = {"S&P500 (FXAIX)": "FXAIX", "Taiwan High-Div(0056.TW)": "0056.TW"}
+    selection = st.sidebar.selectbox("Baseline", list(selection_map.keys()))
+    return StockInfo(selection_map[selection])
 
 
 def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
@@ -106,6 +111,7 @@ def run_main():
     # Add a text widget for selecting the stock ticker to display
     ticker = st.text_input(label="Ticker")
 
+    baseline = sidebar_set_baseline()
     start_date, end_date = sidebar_get_date_range()
 
     # make a plot of what we need to show
@@ -124,11 +130,11 @@ def run_main():
 
         # calculate the growth relative to the baseline
         stock_growth = stock_info.calculate_growth(start, stop)
-        baseline_growth = FXAIX_BASELINE.calculate_growth(start, stop)
+        baseline_growth = baseline.calculate_growth(start, stop)
         sg_col, bl_col, beat_col = st.beta_columns(3)
         sg_col.text("Stock Growth")
         sg_col.write(f"{stock_growth*100:.2f}%")
-        bl_col.text("S&P 500 Growth")
+        bl_col.text("Baseline Growth")
         bl_col.write(f"{baseline_growth*100:.2f}%")
         beat_col.text("Beat")
         beat_col.write(f"{(stock_growth - baseline_growth)*100:.2f}%")
