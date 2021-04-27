@@ -15,7 +15,7 @@ stop:
 	docker stop $(CONTAINER_NAME)
 
 dev-start:
-	streamlit run stock_dashboard/app.py
+	PYTHONPATH=`pwd` streamlit run stock_dashboard/app.py
 
 lint:
 	black stock_dashboard
