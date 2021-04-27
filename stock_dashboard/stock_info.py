@@ -1,4 +1,6 @@
 """Class for calculating metrics off of a stock price"""
+from typing import Union
+
 import pandas as pd
 import yfinance
 
@@ -21,6 +23,9 @@ class StockInfo:
         self.ticker = ticker
         self.ticker_obj = yfinance.Ticker(ticker)
         self.prices = self.ticker_obj.history(period="max")
+        unadjusted_prices = self.ticker_obj.history(period="max", auto_adjust=False)
+        self.prices["Close_raw"] = unadjusted_prices["Close"]
+        self.prices["adjust_factor"] = self.prices["Close"] / self.prices["Close_raw"]
 
     def get_annual_dividend_yield(self) -> float:
         """Get annual dividend yield, i.e. 0.02 for 2% yield in past 12 months"""
@@ -78,15 +83,45 @@ class StockInfo:
             (self.prices.index >= start_date) & (self.prices.index <= end_date)
         ]
 
-    def calculate_growth(self, start_date: str, end_date: str) -> float:
+    def calculate_growth(
+        self,
+        start_date: str,
+        end_date: str,
+        reinvest: bool = False,
+        initial_price: Union[float, None] = None,
+    ) -> float:
         """Calculate the percentage the stock grew by between start and end date
 
-        This is the growth between the adjusted closing price.
+        The option exists to specify an initial buy-in price, as well as if dividends
+        were immediately reinvested in the same security or not. By default, the
+        assumption is that the security was bought at closing price with no reinvestment
+        of dividends.
 
+        Args:
+            start_date: The initial date the stock was bought
+            end_date: The final day for comparison
+            reinvest: True if dividends were reinvested immediately.
+            initial_price: Initial price. Defaults to the closing price of start_date
+
+        Returns:
+            Growth of the security. E.g. 0.02 is 2%.
         """
         sub_prices = self.get_sub_prices_by_day(start_date, end_date)
         min_date = min(sub_prices.index)
         max_date = max(sub_prices.index)
-        return (sub_prices["Close"][max_date] - sub_prices["Close"][min_date]) / (
-            sub_prices["Close"][min_date]
-        )
+        # set the initial price if not specified
+        if initial_price is None:
+            if reinvest:
+                initial_price = sub_prices["Close"][min_date]
+            else:
+                initial_price = sub_prices["Close_raw"][min_date]
+
+        if reinvest:
+            # just compare the adjusted closing price
+            final_price = sub_prices["Close"][max_date]
+        else:
+            # sum-up all dividends earned and add it to the
+            final_price = (
+                sub_prices["Close_raw"][max_date] + sub_prices["Dividends"].sum()
+            )
+        return (final_price - initial_price) / initial_price
