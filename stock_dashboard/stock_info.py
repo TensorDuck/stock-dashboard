@@ -124,4 +124,5 @@ class StockInfo:
             final_price = (
                 sub_prices["Close_raw"][max_date] + sub_prices["Dividends"].sum()
             )
+
         return (final_price - initial_price) / initial_price

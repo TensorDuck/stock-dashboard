@@ -83,12 +83,21 @@ def sidebar_get_date_range() -> Tuple[datetime.date, datetime.date]:
     return start_date, end_date
 
 
-def purchase_history():
-    date_col, price_col, share_col, beat_col = st.beta_columns(4)
+def purchase_history(stock: StockInfo, baseline: StockInfo):
+    """Add a calculator to determine gains from historical purchase
+
+    Args:
+        stock: The stock to calculate purchase history for
+        baseline: The baseline security to comjpare the stock to.
+    """
+    # set up 4 columns for each field
+    date_col, price_col, reinvest_col, beat_col = st.beta_columns(4)
     date_col.text("Purchase Date")
     price_col.text("Price/Share")
-    share_col.text("Number of Shares")
-    beat_col.text("S&P 500 Beat")
+    reinvest_col.text("Reinvest")
+    beat_col.text("Growth")
+
+    # get input from user on purhcase date, price and reinvestment or not
     purchase_date = date_col.date_input(
         label="",
         min_value=datetime.date(1900, 1, 1),
@@ -96,12 +105,26 @@ def purchase_history():
         value=datetime.datetime.today().date(),
     )
     price_per_share = price_col.number_input(
-        label="", min_value=0.0, value=0.0, step=0.000001
+        label="", min_value=0.01, value=0.01, step=0.000001
     )
-    n_shares = share_col.number_input(label="", min_value=0, value=0, step=1)
+    reinvest = reinvest_col.radio("", [True, False], index=1)
 
-    if purchase_date and price_per_share and n_shares:
-        beat_col.write("100")
+    # calculate the growth of the stock and the baseline security
+    growth = stock.calculate_growth(
+        str(purchase_date),
+        str(datetime.datetime.today().date()),
+        reinvest=reinvest,
+        initial_price=price_per_share,
+    )
+    base_growth = baseline.calculate_growth(
+        str(purchase_date),
+        str(datetime.datetime.today().date()),
+        reinvest=True,  # typical for mutual funds
+    )
+
+    # output the calculated growth
+    beat_col.text(f"stock: {growth*100:.2f}%")
+    beat_col.text(f"beat: {(growth-base_growth)*100:.2f}%")
 
 
 def run_main():
@@ -182,6 +205,9 @@ def run_main():
             )
         )
         st.write(fig)  # write it to streamlit
+
+        # add option to calculate custom stock-price
+        purchase_history(stock_info, baseline)
 
 
 if __name__ == "__main__":
