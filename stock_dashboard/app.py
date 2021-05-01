@@ -10,6 +10,8 @@ from plotly import graph_objects as pgo
 
 from stock_dashboard.stock_info import StockInfo
 
+st.set_page_config(layout="wide")
+
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300, allow_output_mutation=True)
 def get_stock_info_and_history(ticker: str) -> StockInfo:
@@ -25,10 +27,7 @@ def get_stock_info_and_history(ticker: str) -> StockInfo:
     prices_all = info_obj.prices
 
     # add additional columns to prices (i.e. rolling average)
-    prices_all["rolling_a"] = info_obj.rolling_average(10)
-    prices_all["rolling_b"] = info_obj.rolling_average(20)
-
-    return info_obj.ticker_obj.info, prices_all
+    prices_all["rolling_a"] = info_obj.rolcolumnss_all
 
 
 def sidebar_set_baseline() -> StockInfo:
@@ -91,7 +90,7 @@ def purchase_history(stock: StockInfo, baseline: StockInfo):
         baseline: The baseline security to comjpare the stock to.
     """
     # set up 4 columns for each field
-    date_col, price_col, reinvest_col, beat_col = st.beta_columns(4)
+    date_col, price_col, reinvest_col, beat_col = st.beta_columns([1, 1.5, 0.5, 1])
     date_col.text("Purchase Date")
     price_col.text("Price/Share")
     reinvest_col.text("Reinvest")
@@ -204,7 +203,7 @@ def run_main():
                 fill="tonexty",
             )
         )
-        st.write(fig)  # write it to streamlit
+        st.plotly_chart(fig, use_container_width=True)  # write it to streamlit
 
         # add option to calculate custom stock-price
         purchase_history(stock_info, baseline)
