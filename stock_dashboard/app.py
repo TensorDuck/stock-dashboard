@@ -6,11 +6,38 @@ import datetime
 from typing import Tuple
 
 import streamlit as st
+import pandas as pd
 from plotly import graph_objects as pgo
 
 from stock_dashboard.stock_info import StockInfo
 
 st.set_page_config(layout="wide")
+
+
+class StockPlot:
+    def __init__(self):
+        self.fig = pgo.Figure(layout={"hovermode": "x unified"})
+
+    def add_line(self, x: pd.Series, y: pd.Series, name: str, color=None, dash=False):
+        self.fig.add_trace(
+            pgo.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                name=name,
+                line_color=color,
+                line_dash="dash" if dash else None,
+            )
+        )
+
+    def add_band(
+        self, x: pd.Series, y1: pd.Series, y2: pd.Series, name: str, color=None,
+    ):
+        line1 = pgo.Scatter(x=x, y=y1, mode="lines", name=name, line_color=color)
+        line2 = pgo.Scatter(
+            x=x, y=y2, mode="lines", name=name, line=line1.line, fill="tonexty"
+        )
+        self.fig.add_traces([line1, line2])
 
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300, allow_output_mutation=True)
@@ -163,47 +190,31 @@ def run_main():
 
         # create the figure object in plotly for plotting the prices to the dashboard
         prices = stock_info.get_sub_prices_by_day(start, stop)
-        fig = pgo.Figure(layout={"hovermode": "x unified"})
-        fig.add_trace(
-            pgo.Scatter(x=prices.index, y=prices["Close"], mode="lines", name="price",)
+        bollinger_bands = stock_info.bollinger_bands().loc[prices.index]
+
+        plotter = StockPlot()
+        plotter.add_line(prices.index, prices["Close"], name="price")
+        plotter.add_line(
+            prices.index,
+            stock_info.rolling_average(10)[prices.index],
+            "10-day Average",
+            dash=True,
         )
-        fig.add_trace(
-            pgo.Scatter(
-                x=prices.index,
-                y=stock_info.rolling_average(10)[prices.index],
-                mode="lines",
-                name="10-day Average",
-            )
+        plotter.add_line(
+            prices.index,
+            stock_info.rolling_average(20)[prices.index],
+            "20-day Average",
+            dash=True,
         )
-        fig.add_trace(
-            pgo.Scatter(
-                x=prices.index,
-                y=stock_info.rolling_average(20)[prices.index],
-                mode="lines",
-                name="20-day Average",
-            )
+        plotter.add_band(
+            bollinger_bands.index,
+            bollinger_bands["bollinger_upper"],
+            bollinger_bands["bollinger_lower"],
+            name="bollinger",
+            color="green",
         )
 
-        # calculate bollinger bands
-        bollinger_bands = stock_info.bollinger_bands().loc[prices.index]
-        fig.add_trace(
-            pgo.Scatter(
-                x=bollinger_bands.index,
-                y=bollinger_bands["bollinger_upper"],
-                mode="lines",
-                name="bollinger_lower",
-            )
-        )
-        fig.add_trace(
-            pgo.Scatter(
-                x=bollinger_bands.index,
-                y=bollinger_bands["bollinger_lower"],
-                mode="lines",
-                name="bollinger_upper",
-                fill="tonexty",
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)  # write it to streamlit
+        st.plotly_chart(plotter.fig, use_container_width=True)  # write it to streamlit
 
         # add option to calculate custom stock-price
         purchase_history(stock_info, baseline)
