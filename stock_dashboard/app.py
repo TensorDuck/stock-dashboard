@@ -5,8 +5,8 @@ Creates a dashboard app for displaying a stock price with a rolling-average
 import datetime
 from typing import Tuple
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from plotly import graph_objects as pgo
 
 from stock_dashboard.stock_info import StockInfo
@@ -33,9 +33,17 @@ class StockPlot:
     def add_band(
         self, x: pd.Series, y1: pd.Series, y2: pd.Series, name: str, color=None,
     ):
-        line1 = pgo.Scatter(x=x, y=y1, mode="lines", name=name, line_color=color)
+        line1 = pgo.Scatter(
+            x=x, y=y1, mode="lines", name=name, line_color=color, showlegend=False
+        )
         line2 = pgo.Scatter(
-            x=x, y=y2, mode="lines", name=name, line=line1.line, fill="tonexty"
+            x=x,
+            y=y2,
+            mode="lines",
+            name=name,
+            fill="tonexty",
+            line_color=color,
+            fillcolor=color,
         )
         self.fig.add_traces([line1, line2])
 
@@ -193,7 +201,7 @@ def run_main():
         bollinger_bands = stock_info.bollinger_bands().loc[prices.index]
 
         plotter = StockPlot()
-        plotter.add_line(prices.index, prices["Close"], name="price")
+        plotter.add_line(prices.index, prices["Close"], name="price", color="black")
         plotter.add_line(
             prices.index,
             stock_info.rolling_average(10)[prices.index],
@@ -211,7 +219,7 @@ def run_main():
             bollinger_bands["bollinger_upper"],
             bollinger_bands["bollinger_lower"],
             name="bollinger",
-            color="green",
+            color="rgba(0, 255, 0, 0.1)",
         )
 
         st.plotly_chart(plotter.fig, use_container_width=True)  # write it to streamlit
