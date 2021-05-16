@@ -78,7 +78,6 @@ class StockInfo:
 
     def get_sub_prices_by_day(self, start_date: str, end_date: str) -> pd.DataFrame:
         """Get a sub-sample between the start and end dates"""
-
         return self.prices[
             (self.prices.index >= start_date) & (self.prices.index <= end_date)
         ]
@@ -107,6 +106,8 @@ class StockInfo:
             Growth of the security. E.g. 0.02 is 2%.
         """
         sub_prices = self.get_sub_prices_by_day(start_date, end_date)
+        if len(sub_prices.index) == 0:  # stock didn't exist at this date
+            return None
         min_date = min(sub_prices.index)
         max_date = max(sub_prices.index)
         # set the initial price if not specified

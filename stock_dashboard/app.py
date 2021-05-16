@@ -157,8 +157,9 @@ def purchase_history(stock: StockInfo, baseline: StockInfo):
     )
 
     # output the calculated growth
-    beat_col.text(f"stock: {growth*100:.2f}%")
-    beat_col.text(f"beat: {(growth-base_growth)*100:.2f}%")
+    if (growth is not None) and (base_growth is not None):
+        beat_col.text(f"stock: {growth*100:.2f}%")
+        beat_col.text(f"beat: {(growth-base_growth)*100:.2f}%")
 
 
 def run_main():
@@ -188,13 +189,14 @@ def run_main():
         # calculate the growth relative to the baseline
         stock_growth = stock_info.calculate_growth(start, stop)
         baseline_growth = baseline.calculate_growth(start, stop)
-        sg_col, bl_col, beat_col = st.beta_columns(3)
-        sg_col.text("Stock Growth")
-        sg_col.write(f"{stock_growth*100:.2f}%")
-        bl_col.text("Baseline Growth")
-        bl_col.write(f"{baseline_growth*100:.2f}%")
-        beat_col.text("Beat")
-        beat_col.write(f"{(stock_growth - baseline_growth)*100:.2f}%")
+        if (stock_growth is not None) and (baseline_growth is not None):
+            sg_col, bl_col, beat_col = st.beta_columns(3)
+            sg_col.text("Stock Growth")
+            sg_col.write(f"{stock_growth*100:.2f}%")
+            bl_col.text("Baseline Growth")
+            bl_col.write(f"{baseline_growth*100:.2f}%")
+            beat_col.text("Beat")
+            beat_col.write(f"{(stock_growth - baseline_growth)*100:.2f}%")
 
         # create the figure object in plotly for plotting the prices to the dashboard
         prices = stock_info.get_sub_prices_by_day(start, stop)
