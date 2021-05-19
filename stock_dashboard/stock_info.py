@@ -88,6 +88,7 @@ class StockInfo:
         end_date: str,
         reinvest: bool = False,
         initial_price: Union[float, None] = None,
+        baseline=None,
     ) -> float:
         """Calculate the percentage the stock grew by between start and end date
 
@@ -101,6 +102,7 @@ class StockInfo:
             end_date: The final day for comparison
             reinvest: True if dividends were reinvested immediately.
             initial_price: Initial price. Defaults to the closing price of start_date
+            baseline[StockInfo]: A baseline to compare the growth against.
 
         Returns:
             Growth of the security. E.g. 0.02 is 2%.
@@ -126,4 +128,13 @@ class StockInfo:
                 sub_prices["Close_raw"][max_date] + sub_prices["Dividends"].sum()
             )
 
-        return (final_price - initial_price) / initial_price
+        growth = (final_price - initial_price) / initial_price
+        if baseline is not None:
+            baseline_growth = baseline.calculate_growth(
+                start_date, end_date, reinvest=True
+            )
+            if baseline_growth is None:
+                baseline_growth = 0
+        else:
+            baseline_growth = 0
+        return growth - baseline_growth

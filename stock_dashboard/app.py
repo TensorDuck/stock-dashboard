@@ -8,6 +8,7 @@ from typing import Tuple
 import pandas as pd
 import streamlit as st
 from plotly import graph_objects as pgo
+from streamlit.logger import init_tornado_logs
 
 from stock_dashboard.stock_info import StockInfo
 
@@ -144,22 +145,18 @@ def purchase_history(stock: StockInfo, baseline: StockInfo):
     reinvest = reinvest_col.radio("", [True, False], index=1)
 
     # calculate the growth of the stock and the baseline security
+    start = str(purchase_date)
+    stop = str(datetime.datetime.today().date())
     growth = stock.calculate_growth(
-        str(purchase_date),
-        str(datetime.datetime.today().date()),
-        reinvest=reinvest,
-        initial_price=price_per_share,
+        start, stop, reinvest=reinvest, initial_price=price_per_share,
     )
-    base_growth = baseline.calculate_growth(
-        str(purchase_date),
-        str(datetime.datetime.today().date()),
-        reinvest=True,  # typical for mutual funds
+    beat = stock.calculate_growth(
+        start, stop, reinvest=reinvest, initial_price=price_per_share, baseline=baseline
     )
-
     # output the calculated growth
-    if (growth is not None) and (base_growth is not None):
+    if (growth is not None) or (beat is not None):
         beat_col.text(f"stock: {growth*100:.2f}%")
-        beat_col.text(f"beat: {(growth-base_growth)*100:.2f}%")
+        beat_col.text(f"beat: {(beat)*100:.2f}%")
 
 
 def run_main():
@@ -179,24 +176,32 @@ def run_main():
         stock_info = get_stock_info_and_history(ticker)
 
         # Display some basic stock information to the dashboard
-        st.write(f"{stock_info.ticker_obj.info['longName']}")
-        dividend_yield = stock_info.get_annual_dividend_yield()
-        if dividend_yield:
-            st.write(f"Annual Dividend Yield: {dividend_yield*100:.2f}%")
-        else:
-            st.write("Annual Dividend Yield: None")
+        try:  # handles crypto prices which lack some of these field names
+            st.write(f"{stock_info.ticker_obj.info['longName']}")
+            dividend_yield = stock_info.get_annual_dividend_yield()
+            if dividend_yield:
+                st.write(f"Annual Dividend Yield: {dividend_yield*100:.2f}%")
+            else:
+                st.write("Annual Dividend Yield: None")
+        except:
+            pass
 
         # calculate the growth relative to the baseline
         stock_growth = stock_info.calculate_growth(start, stop)
         baseline_growth = baseline.calculate_growth(start, stop)
-        if (stock_growth is not None) and (baseline_growth is not None):
+        stock_beat = stock_info.calculate_growth(start, stop, baseline=baseline)
+        if (
+            (stock_growth is not None)
+            or (baseline_growth is not None)
+            or (stock_beat is not None)
+        ):
             sg_col, bl_col, beat_col = st.beta_columns(3)
             sg_col.text("Stock Growth")
             sg_col.write(f"{stock_growth*100:.2f}%")
             bl_col.text("Baseline Growth")
             bl_col.write(f"{baseline_growth*100:.2f}%")
             beat_col.text("Beat")
-            beat_col.write(f"{(stock_growth - baseline_growth)*100:.2f}%")
+            beat_col.write(f"{(stock_beat)*100:.2f}%")
 
         # create the figure object in plotly for plotting the prices to the dashboard
         prices = stock_info.get_sub_prices_by_day(start, stop)
