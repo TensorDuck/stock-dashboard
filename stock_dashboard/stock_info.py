@@ -1,6 +1,7 @@
 """Class for calculating metrics off of a stock price"""
 from typing import Union
 
+import numpy as np
 import pandas as pd
 import yfinance
 
@@ -24,8 +25,16 @@ class StockInfo:
         self.ticker_obj = yfinance.Ticker(ticker)
         self.prices = self.ticker_obj.history(period="max")
         unadjusted_prices = self.ticker_obj.history(period="max", auto_adjust=False)
+
+        # add additional useful columns
         self.prices["Close_raw"] = unadjusted_prices["Close"]
         self.prices["adjust_factor"] = self.prices["Close"] / self.prices["Close_raw"]
+        self.prices["percent_change"] = (
+            self.prices["Close"].pct_change(periods=1).fillna(0)
+        )
+        self.prices["log_percent_change"] = self.prices["percent_change"].apply(
+            lambda s: np.log(s + 1)
+        )
 
     def get_annual_dividend_yield(self) -> float:
         """Get annual dividend yield, i.e. 0.02 for 2% yield in past 12 months"""

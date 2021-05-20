@@ -31,6 +31,23 @@ class StockPlot:
             )
         )
 
+    def add_band_multi_color(
+        self,
+        x: pd.Series,
+        y1: pd.Series,
+        y2: pd.Series,
+        name: str,
+        greater_color: str = "rgba(0, 255, 0, 0.5)",
+        lesser_color: str = "rgba(255, 0, 0, 0.5)",
+    ):
+        greater = y2 >= y1
+        y1_greater, y1_lesser = y1.copy(), y1.copy()
+        y1_greater[~greater] = y2[~greater]
+        y1_lesser[greater] = y2[greater]
+
+        self.add_band(x, y1_greater, y2, f"> {name}", color=greater_color)
+        self.add_band(x, y1_lesser, y2, f"< {name}", color=lesser_color)
+
     def add_band(
         self, x: pd.Series, y1: pd.Series, y2: pd.Series, name: str, color=None,
     ):
@@ -205,23 +222,26 @@ def run_main():
 
         # create the figure object in plotly for plotting the prices to the dashboard
         prices = stock_info.get_sub_prices_by_day(start, stop)
+        baseline_prices = baseline.get_sub_prices_by_day(start, stop)
         bollinger_bands = stock_info.bollinger_bands().loc[prices.index]
 
-        plotter = StockPlot()
-        plotter.add_line(prices.index, prices["Close"], name="price", color="black")
-        plotter.add_line(
+        overlay_plotter = StockPlot()
+        overlay_plotter.add_line(
+            prices.index, prices["Close"], name="price", color="black"
+        )
+        overlay_plotter.add_line(
             prices.index,
             stock_info.rolling_average(10)[prices.index],
             "10-day Average",
             dash=True,
         )
-        plotter.add_line(
+        overlay_plotter.add_line(
             prices.index,
             stock_info.rolling_average(20)[prices.index],
             "20-day Average",
             dash=True,
         )
-        plotter.add_band(
+        overlay_plotter.add_band(
             bollinger_bands.index,
             bollinger_bands["bollinger_upper"],
             bollinger_bands["bollinger_lower"],
@@ -229,7 +249,24 @@ def run_main():
             color="rgba(0, 255, 0, 0.1)",
         )
 
-        st.plotly_chart(plotter.fig, use_container_width=True)  # write it to streamlit
+        st.plotly_chart(
+            overlay_plotter.fig, use_container_width=True
+        )  # write it to streamlit
+
+        oscillator_plotter = StockPlot()
+        oscillator_plotter.add_line(
+            prices.index, [0 for i in prices.index], "", color="black"
+        )
+        oscillator_plotter.add_line(
+            prices.index, prices["percent_change"], "percent_change", color="blue"
+        )
+        oscillator_plotter.add_band_multi_color(
+            prices.index,
+            pd.Series([0 for i in range(len(prices.index))], index=prices.index),
+            prices["log_percent_change"] - baseline_prices["log_percent_change"],
+            name="baseline",
+        )
+        st.plotly_chart(oscillator_plotter.fig, use_container_width=True)
 
         # add option to calculate custom stock-price
         purchase_history(stock_info, baseline)
