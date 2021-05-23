@@ -1,4 +1,5 @@
 """Class for calculating metrics off of a stock price"""
+import datetime
 from typing import Union
 
 import numpy as np

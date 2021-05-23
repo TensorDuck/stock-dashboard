@@ -31,23 +31,6 @@ class StockPlot:
             )
         )
 
-    def add_band_multi_color(
-        self,
-        x: pd.Series,
-        y1: pd.Series,
-        y2: pd.Series,
-        name: str,
-        greater_color: str = "rgba(0, 255, 0, 0.5)",
-        lesser_color: str = "rgba(255, 0, 0, 0.5)",
-    ):
-        greater = y2 >= y1
-        y1_greater, y1_lesser = y1.copy(), y1.copy()
-        y1_greater[~greater] = y2[~greater]
-        y1_lesser[greater] = y2[greater]
-
-        self.add_band(x, y1_greater, y2, f"> {name}", color=greater_color)
-        self.add_band(x, y1_lesser, y2, f"< {name}", color=lesser_color)
-
     def add_band(
         self, x: pd.Series, y1: pd.Series, y2: pd.Series, name: str, color=None,
     ):
@@ -64,6 +47,51 @@ class StockPlot:
             fillcolor=color,
         )
         self.fig.add_traces([line1, line2])
+
+    def add_multi_bar_plots(
+        self,
+        x: pd.Series,
+        y1: pd.Series,
+        y2: pd.Series,
+        name: str,
+        greater_color: str = "rgba(0, 255, 0, 0.5)",
+        lesser_color: str = "rgba(255, 0, 0, 0.5)",
+    ):
+        greater = y2 >= y1
+        diff = y2 - y1
+
+        self.add_bar_plots(
+            x[greater], diff[greater], f"> {name}", color=greater_color,
+        )
+        self.add_bar_plots(
+            x[~greater], diff[~greater], f"< {name}", color=lesser_color,
+        )
+
+    def add_bar_plots(
+        self,
+        x: pd.Series,
+        y: pd.Series,
+        name: str,
+        color: str = "rgba(0, 255, 0, 0.5)",
+    ):
+        spacing = min(x.to_series().diff().dropna())
+        self.fig.add_traces(
+            pgo.Histogram(
+                x=x,
+                y=y,
+                histfunc="sum",
+                name=name,
+                xbins={
+                    "start": min(x) - (spacing / 2),
+                    "end": max(x) + (spacing / 2),
+                    "size": spacing,
+                },  # bins used for histogram
+                marker_color=color,
+                autobinx=False,
+            )
+        )
+
+        self.fig.update_layout(barmode="overlay")
 
 
 @st.cache(show_spinner=True, max_entries=10, ttl=300, allow_output_mutation=True)
@@ -248,25 +276,47 @@ def run_main():
             name="bollinger",
             color="rgba(0, 255, 0, 0.1)",
         )
-
         st.plotly_chart(
             overlay_plotter.fig, use_container_width=True
         )  # write it to streamlit
+
+        cumulative_beat = (
+            prices["log_percent_change"] - baseline_prices["log_percent_change"]
+        ).cumsum()
 
         oscillator_plotter = StockPlot()
         oscillator_plotter.add_line(
             prices.index, [0 for i in prices.index], "", color="black"
         )
+        """
         oscillator_plotter.add_line(
             prices.index, prices["percent_change"], "percent_change", color="blue"
-        )
-        oscillator_plotter.add_band_multi_color(
+        )"""
+        oscillator_plotter.add_multi_bar_plots(
             prices.index,
             pd.Series([0 for i in range(len(prices.index))], index=prices.index),
             prices["log_percent_change"] - baseline_prices["log_percent_change"],
             name="baseline",
         )
+
+        oscillator_plotter.add_line(
+            prices.index,
+            (prices["log_percent_change"] - baseline_prices["log_percent_change"])
+            .rolling(5)
+            .mean(),
+            "cumulative_beat",
+            color="rgba(0, 0, 255, 1.0)",
+        )
         st.plotly_chart(oscillator_plotter.fig, use_container_width=True)
+
+        extra_plotter = StockPlot()
+        extra_plotter.add_line(
+            prices.index,
+            cumulative_beat * prices["Close"].iloc[0],
+            "cumulative beat",
+            color="orange",
+        )
+        st.plotly_chart(extra_plotter.fig, use_container_width=True)
 
         # add option to calculate custom stock-price
         purchase_history(stock_info, baseline)
