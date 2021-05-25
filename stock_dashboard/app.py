@@ -153,9 +153,15 @@ def run_main():
             pass
 
         # calculate the growth relative to the baseline
-        stock_growth = stock_info.calculate_growth(start, stop)
-        baseline_growth = baseline.calculate_growth(start, stop)
-        stock_beat = stock_info.calculate_growth(start, stop, baseline=baseline)
+        reinvest = st.radio(
+            "Reinvest (Baseline always reinvested)", [True, False], index=1
+        )
+        stock_growth = stock_info.calculate_growth(start, stop, reinvest=reinvest)
+        baseline_growth = baseline.calculate_growth(start, stop, reinvest=True)
+        stock_beat = stock_info.calculate_growth(
+            start, stop, baseline=baseline, reinvest=reinvest
+        )
+
         if (
             (stock_growth is not None)
             or (baseline_growth is not None)
