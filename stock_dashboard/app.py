@@ -209,10 +209,7 @@ def run_main():
         oscillator_plotter.add_line(
             prices.index, [0 for i in prices.index], "", color="black"
         )
-        """
-        oscillator_plotter.add_line(
-            prices.index, prices["percent_change"], "percent_change", color="blue"
-        )"""
+
         oscillator_plotter.add_multi_bar_plots(
             prices.index,
             pd.Series([0 for i in range(len(prices.index))], index=prices.index),
@@ -237,9 +234,11 @@ def run_main():
             "cumulative beat",
             color="orange",
         )
+        st.header("Cumulative Beat")
         st.plotly_chart(extra_plotter.fig, use_container_width=True)
 
         # add option to calculate custom stock-price
+        st.header("Calcualte Beat from Specific Purchase")
         purchase_history(stock_info, baseline)
 
 
