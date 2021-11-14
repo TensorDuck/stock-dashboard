@@ -9,7 +9,40 @@ rolling average are typical metrics to use. If D10 > D20 indicates an up-trend,
 while D10 < D20 indicates a down-trend. The expectation is that when these
 values cross-over, then there's a buy or sell point opportunity.
 
+## Prerequisites
+
+You must have docker
+
 ## Quickstart
+
+### Using pre-built docker container (linux)
+
+For linux OS, run the command
+```
+make docker-hub-start
+```
+
+This will download the pre-built docker container from DockerHub and then create an
+instance of the dashboard at ``http://localhost:8080``.
+
+### Using pre-built docker container (windows)
+coming soon
+
+### Build locally with docker
+
+For linux OS, run the command
+```
+make start
+```
+
+Which will build the docker container locally, and then put up an instance of the
+dashboard at ``http://localhost:8080`.
+
+
+### Run locally without docker
+
+This is great for dev-work, but not very stable as it's dependent on your local Python
+installation and package installations.
 
 Running the command:
 
@@ -17,7 +50,7 @@ Running the command:
 make dev-start
 ```
 
-Will set up a locally running instance on port: `http://localhost:8501`, the
+Will set up a locally running instance on port: ``http://localhost:8501``, the
 default port for streamlit. Then enter your desired stock ticker info.
 
 ## Deploy to GCP
