@@ -11,13 +11,27 @@ values cross-over, then there's a buy or sell point opportunity.
 
 ## Prerequisites
 
-You must have docker
+You must have docker installed for your particular OS.
 
 ## Quickstart
 
-### Using pre-built docker container (linux)
+### Using pre-built docker container without cloning this repository.
 
-For linux OS, run the command
+This sequence of commands will get docker to download the latest version and run
+a container. 
+
+```
+docker pull tensorduck/stock-dashboard:latest
+docker run --rm -p 8080:8080 --name stock-dashboard -dt tensorduck/stock-dashboard:latest
+```
+
+This will download the pre-built docker container from Docker Hub and then create an
+instance of the dashboard at ``http://localhost:8080``.
+
+### Using pre-built docker container with cloning this repo
+
+Go to the main directory of this repository and execute the `make` command:
+
 ```
 make docker-hub-start
 ```
@@ -25,19 +39,15 @@ make docker-hub-start
 This will download the pre-built docker container from DockerHub and then create an
 instance of the dashboard at ``http://localhost:8080``.
 
-### Using pre-built docker container (windows)
-coming soon
-
 ### Build locally with docker
 
-For linux OS, run the command
+You can build a local container for your repository by doing:
 ```
 make start
 ```
 
-Which will build the docker container locally, and then put up an instance of the
-dashboard at ``http://localhost:8080`.
-
+This will first create the docker container from scratch, and then create an 
+instance of the dashboard at ``http://localhost:8080``.
 
 ### Run locally without docker
 
@@ -51,7 +61,21 @@ make dev-start
 ```
 
 Will set up a locally running instance on port: ``http://localhost:8501``, the
-default port for streamlit. Then enter your desired stock ticker info.
+default port for streamlit.
+
+## Using the Container
+
+Enter your desired stock-ticker, and desired date-range. This will then pull data
+from yfinance and create a plot showing the stock's performance. The stock will
+be compared with the baseline-performance of the S&P500, i.e. the Fidelity FXAIX
+index fund. Alternatively, you can also compare it to foreign stock info if available.
+For example, Taiwanese stocks can be entered as ``{ticker number}.TW``. The baseline
+for Taiwanese stocks would be the high-dividend yield index: ``0056.TW``.
+
+Scrolling down, there are also additional plots showing the cumulative performance
+(in logarithmic percents) and finally a simple calculator at the bottom to 
+calcualte the performance of a specific purchase of the security against the 
+baseline. 
 
 ## Deploy to GCP
 
