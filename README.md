@@ -11,7 +11,7 @@ values cross-over, then there's a buy or sell point opportunity.
 
 ## Prerequisites
 
-You must have docker installed for your particular OS.
+You must have docker installed for your particular OS. See: https://docs.docker.com/get-docker/
 
 ## Quickstart
 
@@ -64,6 +64,9 @@ Will set up a locally running instance on port: ``http://localhost:8501``, the
 default port for streamlit.
 
 ## Using the Container
+
+Open the dashboard by going to the local instance ``http://localhost:8080`` or 
+``localhost:8501`` depending on how the container was started (see above).  
 
 Enter your desired stock-ticker, and desired date-range. This will then pull data
 from yfinance and create a plot showing the stock's performance. The stock will
